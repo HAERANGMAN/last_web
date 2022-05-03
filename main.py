@@ -11,9 +11,15 @@ from flask_migrate import Migrate
 
 
 
+
+db = SQLAlchemy()
+
 app = Flask(__name__)
 app.secret_key = 'super secret key'
 migrate = Migrate()
+
+db.init_app(app)
+migrate.init_app(app, db)
 
 
 @app.route('/')
