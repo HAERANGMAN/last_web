@@ -18,7 +18,8 @@ app = Flask(__name__)
 app.secret_key = 'super secret key'
 migrate = Migrate()
 
-app.config.from_object(config)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:ekdldksk@localhost:3306/testdb'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False 
 db.init_app(app)
 migrate.init_app(app, db)
 
