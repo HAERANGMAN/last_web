@@ -8,7 +8,7 @@ import json
 import plotly
 import plotly.express as px
 from flask_migrate import Migrate
-
+import config
 
 
 
@@ -18,6 +18,7 @@ app = Flask(__name__)
 app.secret_key = 'super secret key'
 migrate = Migrate()
 
+app.config.from_object(config)
 db.init_app(app)
 migrate.init_app(app, db)
 
