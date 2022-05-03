@@ -22,9 +22,9 @@ def index():
 def login_():
     request.method = 'POST' 
     if request.form["id_"] == "asd" and request.form["pw_"] == "asd":
-        return redirect(url_for("main"))
+        return redirect(url_for("main.main"))
     else:
-        return redirect(url_for("index"))
+        return redirect(url_for("main.index"))
 
 
 @bp.route('/main')
