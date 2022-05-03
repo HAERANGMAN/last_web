@@ -1,13 +1,17 @@
 from flask_sqlalchemy import SQLAlchemy
+from plotly.subplots import make_subplots
+from datetime import datetime
+import plotly.graph_objects as go
 import sqlalchemy as dbb
 import pandas as pd
-from datetime import datetime
+
 
 db = SQLAlchemy()
 
 
+
 class query_sql:
-        def __init__(self):
+        def __init__(self, name, date):
                 engine = dbb.create_engine("mysql+pymysql://{user}:{pw}@{host}/{db}"
                                 .format(host="ls-a20f4420f7aa9967e25c1e0aecf4d8b641af5f13.cgtgapkuvqbt.ap-northeast-2.rds.amazonaws.com",
                                         user="dbmasteruser",
@@ -37,7 +41,6 @@ class query_sql:
                 
                 self.date_index = pd.DataFrame(data=result_set, columns=columns_pd)
 
-        def stock(self, name, date):
                 engine = dbb.create_engine("mysql+pymysql://{user}:{pw}@{host}/{db}"
                                 .format(host="ls-a20f4420f7aa9967e25c1e0aecf4d8b641af5f13.cgtgapkuvqbt.ap-northeast-2.rds.amazonaws.com",
                                         user="dbmasteruser",
@@ -77,7 +80,36 @@ class query_sql:
                 globals()[name]=globals()[name].iloc[:last,:]
                 globals()[name]=globals()[name].fillna(method='ffill')
                 #globals()[name]['date'] = globals()[name]['date'].apply(lambda x : datetime.strftime(x, '%Y-%m-%d %H:%M:%S'))              
-                # globals()[name]=globals()[name].set_index('date')                
+                #globals()[name]=globals()[name].set_index('date')    
+
+                asd = globals()[name]
+
+
+
+        def chart(self):
+                fig = go.Figure(data=[go.Candlestick(x=self.asd['date'],
+                                    open=self.asd['open'],
+                                    high=self.asd['high'],
+                                    low=self.asd['low'],
+                                    close=self.asd['close'])])
+                # x축 type을 카테고리 형으로 설정, 순서를 오름차순으로 날짜순서가 되도록 설정
+                fig.layout = dict(xaxis = dict(type="category", 
+                                                categoryorder='category ascending'))
+                fig.update_xaxes(nticks=5)
+                fig.show()
+
+                ##########################################################################
+                # 차트그리기
+                # fig = go.Figure(data=[go.Candlestick(x=globals()[name]['date'],
+                #                     open=globals()[name]['open'],
+                #                     high=globals()[name]['high'],
+                #                     low=globals()[name]['low'],
+                #                     close=globals()[name]['close'])])
+                # # x축 type을 카테고리 형으로 설정, 순서를 오름차순으로 날짜순서가 되도록 설정
+                # fig.layout = dict(xaxis = dict(type="category", 
+                #                                 categoryorder='category ascending'))
+                # fig.update_xaxes(nticks=5)
+                # fig.show()        
                 
 #######################################################################################################################
 #######################################################################################################################
