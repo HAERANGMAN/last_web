@@ -1,46 +1,24 @@
-from flask import Flask, request, url_for, render_template, redirect
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, request, url_for, render_template, redirect, Blueprint
 import sqlalchemy as dbb
 import pandas as pd
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import json
 import plotly
-import plotly.express as px
-from flask_migrate import Migrate
-import config
 
 
 
-db = SQLAlchemy()
-migrate = Migrate()
-
-
-def create_app():
-    app = Flask(__name__)
-    app.secret_key = 'super secret key'
-
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:ekdldksk@localhost:3306/testdb'
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False 
-    db.init_app(app)
-    migrate.init_app(app, db)
-
-    return app
+bp = Blueprint('main', __name__, url_prefix='/')
 
 
 
-app = Flask(__name__)
-app.secret_key = 'super secret key'
-
-
-
-@app.route('/')
+@bp.route('/')
 def index():
     return render_template("index.html")
 
 
 
-@app.route('/login', methods=['POST'])
+@bp.route('/login', methods=['POST'])
 def login_():
     request.method = 'POST' 
     if request.form["id_"] == "asd" and request.form["pw_"] == "asd":
@@ -49,12 +27,12 @@ def login_():
         return redirect(url_for("index"))
 
 
-@app.route('/main')
+@bp.route('/main')
 def main():
     return render_template("main.html")
 
 
-@app.route('/search', methods=['POST'])
+@bp.route('/search', methods=['POST'])
 def main_():
     request.method = 'POST' 
     name = request.form["search_"]
@@ -138,11 +116,3 @@ def main_():
 #def main():
     #return render_template("main.html", chart_iplot=asd)
 
-
-
-
-if __name__ == '__main__':
-    app.run(port=5000, debug=True) #post는 여기로 옴
-
-
-    
