@@ -5,7 +5,9 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import json
 import plotly
-
+from pmdarima.arima import ndiffs
+import pmdarima as pm
+import numpy as np
 
 
 bp = Blueprint('main', __name__, url_prefix='/')
@@ -89,27 +91,110 @@ def main_():
     #globals()[name]=globals()[name].set_index('date')    
 
     #radio값에 맞춰서 분봉설정
-    globals()[name]=globals()[name].iloc[::period_time,:]
+    if period_time == 1:
+        globals()[name]=globals()[name].iloc[::period_time,:]
+    elif period_time == 5:
+        globals()[name]=globals()[name].iloc[::period_time,:]
+        #하루 단위로 끊어서 15시 15분까지, 15, 30, 35
+    elif period_time == 60:
+        globals()[name]=globals()[name].iloc[::period_time,:]
+        #9 10 11 12 13 14 15 총 7개
+    elif period_time == 382:
+        globals()[name]=globals()[name].iloc[381::period_time,:]
+        #종가
 
+
+    ###최종 df
     each_df = globals()[name]
 
-    fig = go.Figure(data=[go.Candlestick(x=each_df['date'],
-                                    open=each_df['open'],
-                                    high=each_df['high'],
-                                    low=each_df['low'],
-                                    close=each_df['close'])])
-                # x축 type을 카테고리 형으로 설정, 순서를 오름차순으로 날짜순서가 되도록 설정
+
+    y_train = each_df['close'].iloc[:len(each_df['close']) - round(len(each_df['close'])*0.3)] #기준행 1504 
+    y_test = each_df['close'].iloc[len(each_df['close']) - round(len(each_df['close'])*0.3):] #70프로로 짜름
+    y_train.plot()
+    y_test.plot()
+
+
+
+    #차분 차수 찾기
+    kpss_diffs = ndiffs(y_train, alpha=0.05 , test='kpss', max_d = 6)
+    adf_diffs = ndiffs(y_train, alpha=0.05, test='adf', max_d=6)
+    n_diffs = max(adf_diffs,kpss_diffs)
+
+
+    send_1 = f'{globals()[name]}의 적정 차분 차수는 {n_diffs}'
+
+
+    model = pm.auto_arima(y=y_train,
+                    d = 1,
+                    start_p=0,
+                    max_p=3,
+                    start_q=0,
+                    max_q=3,
+                    seasonal=False,
+                    stepwise=True,
+                    trace = True)
+    
+    model.fit(y_train)    
+    model.plot_diagnostics(figsize=(16,8))
+
+    
+    send_2 = model.summary()
+
+    y_predict = model.predict(n_periods=len(y_test))
+    y_predict = pd.DataFrame(y_predict, index=y_test.index, columns=['Prediction'])
+    y_predict
+    
+
+    def forcast_one_step():
+        fc, conf_int = model.predict(n_periods=1, return_conf_int=True)
+        return (fc.tolist()[0] , np.asarray(conf_int).tolist()[0] )
+
+
+    forcast_one_step()
+    
+    forcast_list=[]
+    y_pred = []
+    pred_upper=[]
+    pred_lower = []
+
+    for i in y_test:
+        fc , conf = forcast_one_step()
+        y_pred.append(fc)
+        pred_upper.append(conf[1])
+        pred_lower.append(conf[0])
+        model.update(i)
+    
+
+
+    send_3 = f"평균 절대 비율 오차: {np.mean(np.abs((y_test - y_pred) / y_test)) * 100:.2f}%"
+    send_4 = f"평균 괴리율: {np.mean((y_pred - y_test) / y_test) *100:.3f} %"
+
+    
+    import plotly.graph_objects as go
+    fig = go.Figure([
+        go.Scatter(x=y_train.index , y=y_train, name='Train', mode='lines',line=dict(color='royalblue')),
+        #테스트데이터
+        go.Scatter(x=y_test.index , y=y_test, name='Test', mode='lines',line=dict(color='red')),
+        #predict 데이터
+        go.Scatter(x=y_test.index , y=y_pred, name='Prediction', mode='lines',line=dict(color='yellow', dash='dot', width=3)),
+        #신뢰구간
+        go.Scatter(x=y_test.index.tolist() + y_test.index[::-1].tolist() ,
+                y= pred_upper + pred_lower[::-1],
+               fill='toself',
+                fillcolor='rgba(0,0,30,0.1)',
+                line={'color':'rgba(0,0,0,0)'},
+                hoverinfo="skip",
+                showlegend=True
+              )
+                ])
     fig.layout = dict(xaxis = dict(type="category", 
                                     categoryorder='category ascending'))
+    fig.update_layout(height=400 , width=1000, title_text=globals()[name])
     fig.update_xaxes(nticks=5)
 
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-    # header="Fruit in North America"
-    # description = """
-    # A academic study of the number of apples, oranges and bananas in the cities of
-    # San Francisco and Montreal would probably not come up with this chart.
-    # """
-    return render_template("stock.html", graphJSON=graphJSON, df=each_df, name=name) #, header=header,description=description)
+
+    return render_template("stock.html", graphJSON=graphJSON, df=each_df, name=name, send_1=send_1, send_2=send_2, send_3=send_3, send_4=send_4) #, header=header,description=description)
 
 
 #@app.route('/stock/주식코드명')
